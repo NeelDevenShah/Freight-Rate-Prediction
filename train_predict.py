@@ -69,7 +69,7 @@ def main():
     y_train = np.log(df_train_clean['posted_rate'])
     
     print("Training HistGradientBoostingRegressor model...")
-    # Using the optimal configuration found in validation tests
+    # Using the optimal configuration that yields realistic seasonal variation
     model = HistGradientBoostingRegressor(
         max_iter=400,
         learning_rate=0.03,
