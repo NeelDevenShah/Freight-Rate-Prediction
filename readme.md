@@ -1,6 +1,9 @@
-# Freight Rate Prediction Challenge
+# Freight Rate Prediction
 
-This repository contains the machine learning solution for predicting freight rates for upcoming loads.
+## Problem Overview
+This repository contains a machine learning pipeline to predicting freight rates (`posted_rate`) for truckload shipments. Given load attributes—such as origin/destination locations, travel distance, equipment class (Dry Van, Flatbed, Reefer), weight, and shipment date—the model forecasts the market rate. The goal is to accurately predict rates on unseen future periods (November and December) while resolving the daily/weekly seasonality cycles of the freight market.
+
+All final artifacts—including the hyperparameter tuning logs (`tuning_results.csv`) and the generated December prediction charts (`candidate_december.png`)—are stored in the [`scorer_results/`](file:///home/neel/Desktop/spotterAI/scorer_results) directory.
 
 ---
 
@@ -29,7 +32,7 @@ This script outputs:
 ### Step 4: Run the Validation & Chart Script
 Run the validation script to check files format compliance and plot the December prediction curve:
 ```bash
-python score.py --predictions validation_predictions.csv --december-predictions data/december-chart-inputs.csv
+python src/score.py --predictions validation_predictions.csv --december-predictions data/december-chart-inputs.csv
 ```
 This generates the final December load rate chart at `scorer_results/candidate_december.png`.
 
@@ -39,9 +42,9 @@ This generates the final December load rate chart at `scorer_results/candidate_d
 
 The codebase is organized into modular scripts for each phase of the machine learning pipeline, coordinated by a main orchestrator:
 * **`EDA.ipynb`:** Jupyter Notebook detailing exploratory findings, coordinate mapping, schema discrepancies, and train-validation split strategies.
-* **`compare_models.py`:** Baseline model experimentation running multiple algorithms (Linear Regression, Random Forest, HistGradientBoosting) on a time-based split.
-* **`grid_search.py`:** Hyperparameter tuning executing grid search cross-validation on the best working model to find optimal settings.
-* **`train_predict.py`:** Trains the final chosen model using optimal hyperparameters on the cleaned training set and outputs predictions.
+* **`src/compare_models.py`:** Baseline model experimentation running multiple algorithms (Linear Regression, Random Forest, HistGradientBoosting) on a time-based split.
+* **`src/grid_search.py`:** Hyperparameter tuning executing grid search cross-validation on the best working model to find optimal settings.
+* **`src/train_predict.py`:** Trains the final chosen model using optimal hyperparameters on the cleaned training set and outputs predictions.
 * **`runner.py`:** Master runner that coordinates the entire execution sequence end-to-end.
 
 ---
@@ -63,8 +66,8 @@ The codebase is organized into modular scripts for each phase of the machine lea
 
 * **The `quote_signal` Monthly Inversion Anomaly:** 
   The relationship between the rate per mile (`posted_rate / distance`) and the `quote_signal` feature flips based on the month:
-  * **Direct Months** (Jan, Feb, Mar, Jun, Sep): $\text{rate\_per\_mile} \approx \text{quote\_signal}$.
-  * **Inverted Months** (Apr, May, Jul, Oct): $\text{rate\_per\_mile} \approx 4.15 - \text{quote\_signal}$.
+  * **Direct Months** (Jan, Feb, Mar, Jun, Sep): $\text{Rate per Mile} \approx \text{Quote Signal}$.
+  * **Inverted Months** (Apr, May, Jul, Oct): $\text{Rate per Mile} \approx 4.15 - \text{Quote Signal}$.
   * **Mixed Months** (Aug): A 50-50 mixture of direct and inverted values.
   * **Validation & December Sets** (Nov, Dec): The correlation drops to near zero, indicating a mixed/perturbed correlation.
   * **Mitigation:** Relying on `quote_signal` is highly risky because we cannot reliably de-noise it on unseen validation data without the target rate. We **exclude** `quote_signal` from the model entirely, which ensures robust generalization.
@@ -90,7 +93,7 @@ To ensure our model generalizes well to future periods (since the validation dat
 
 ## 6. Model Selection & Parameter Tuning Experiments
 
-### Model Comparison (`compare_models.py`)
+### Model Comparison (`src/compare_models.py`)
 Running different baseline algorithms on the time-based split yields:
 * **Linear Regression (Normal Target):** $R^2 = 0.8385$, MAE = \$144.13
 * **Linear Regression (Log Target):** $R^2 = 0.6230$, MAE = \$438.97
@@ -99,9 +102,7 @@ Running different baseline algorithms on the time-based split yields:
 
 *Decision:* `HistGradientBoostingRegressor` (Log Target) performs the best. The combined effect of transitioning from the Linear Regression baseline to the non-linear model and utilizing the log target transformation yields a **20.2%** improvement in validation Mean Absolute Error (MAE) compared to the standard Linear Regression baseline.
 
-### Hyperparameter Grid Search (`grid_search.py`)
-> [!IMPORTANT]
-> All hyperparameter tuning, model evaluation, and metric comparisons ($R^2$, MAE, RMSE) are evaluated exclusively on the **Month 10 Validation Split** (from the training dataset), NOT on the December data (which lacks target rate values).
+### Hyperparameter Grid Search (`src/grid_search.py`)
 
 We ran a comprehensive grid search over target configurations (logged vs. non-logged), learning rates, and tree iteration counts. Below is the performance table evaluated on the validation month split:
 

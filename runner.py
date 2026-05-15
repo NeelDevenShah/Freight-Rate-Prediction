@@ -9,9 +9,9 @@ def run_script(script_name, python_bin='/home/neel/anaconda3/bin/python3'):
         sys.exit(1)
 
 def main():
-    run_script('compare_models.py')
-    run_script('grid_search.py')
-    run_script('train_predict.py')
+    run_script('src/compare_models.py')
+    run_script('src/grid_search.py')
+    run_script('src/train_predict.py')
 
 if __name__ == '__main__':
     main()
