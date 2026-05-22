@@ -102,6 +102,23 @@ Running different baseline algorithms on the time-based split yields:
 
 *Decision:* `HistGradientBoostingRegressor` (Log Target) performs the best. The combined effect of transitioning from the Linear Regression baseline to the non-linear model and utilizing the log target transformation yields a **20.2%** improvement in validation Mean Absolute Error (MAE) compared to the standard Linear Regression baseline.
 
+#### Why HistGradientBoosting with Log-Target Outperforms Other Methods:
+
+1. **Multiplicative Rate Physics (Log Target vs. Raw Target):**
+   Freight rates exhibit multiplicative dynamics where factors like equipment class, seasonal demand, and regional capacity act as percentage modifiers rather than flat dollar additions. For instance, a reefer surcharge or a holiday capacity crunch increases the rate by a percentage, which means a much larger absolute dollar change for long-haul routes compared to short-haul routes. Fitting the model in log-space transforms these multiplicative effects into additive ones, allowing the regressor to fit the underlying variance structure far more accurately and reducing prediction bias for higher-rate lanes.
+
+2. **Non-linear Spatial Geography (Trees vs. Linear Regression):**
+   Freight pricing is heavily spatial. Origin/destination coordinates (latitude and longitude) dictate regional capacity imbalances (headhaul vs. backhaul regions). Linear Regression assumes a flat linear relationship with latitudes and longitudes, which is physically nonsensical and leads to poor generalization. In contrast, tree ensembles recursively split spatial coordinate spaces to group regional lanes and segment geographic coordinates, capturing localized pricing differences natively.
+
+3. **Sequential Boosting vs. Bagging (HistGradientBoosting vs. Random Forest):**
+   While Random Forest fits deep independent trees and averages them, it suffers from "step-function" behavior and flat-line predictions outside its training bounds. HistGradientBoosting builds shallow trees sequentially to fit the gradient residuals of the loss function. This boosting process acts as a smooth, continuous estimator that can reconstruct the high-frequency weekly demand seasonality and continuous distance-rate curves without the artificial blockiness/discontinuity of Random Forests.
+
+4. **Native Handling of Missing Values (Weight & Market Index):**
+   Linear Regression and Random Forest require explicit imputation of missing values (e.g., filling NaNs with zeros or medians), which introduces artificial bias. HistGradientBoosting handles NaNs natively during both split finding and inference by mapping missing values to whichever child node minimizes the loss, preserving the raw patterns in the data.
+
+5. **Histogram-Based Binning & Regularization (Computational & Generalization Efficiency):**
+   Traditional tree models evaluate every unique continuous value (e.g., exact lat/lon coordinates, distances) as a candidate split point, which is computationally expensive and highly prone to overfitting on noise. `HistGradientBoosting` groups continuous features into 256 integer-valued bins. This reduces split-finding complexity from $O(N \log N)$ to $O(N)$, allowing fast training cycles (making large grid searches feasible). Crucially, this binning acts as a natural regularizer, smoothing out micro-variations and allowing the model to generalize much better to the unseen validation months.
+
 ### Hyperparameter Grid Search (`src/grid_search.py`)
 
 We ran a comprehensive grid search over target configurations (logged vs. non-logged), learning rates, and tree iteration counts. Below is the performance table evaluated on the validation month split:
